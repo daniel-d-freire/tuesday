@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark"> <!-- Inicia no modo dark por padrão -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Estoque - Tuesday</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { /* Dark Theme Variables */
+            --bg-primary: #0a192f;
+            --bg-secondary: #112240;
+            --bg-tertiary: #1e293b;
+            --border-color: #233554;
+            --text-primary: #ccd6f6;
+            --text-secondary: #a8b2d1;
+            --text-tertiary: #8892b0;
+            --accent-color: #36a3ff;
+            --green-text: #6ee7b7;
+            --red-text: #fca5a5;
+            --status-ok-bg: rgba(4, 120, 87, 0.5);
+            --status-ok-text: #6ee7b7;
+            --status-alert-bg: rgba(180, 83, 9, 0.5);
+            --status-alert-text: #fcd34d;
+            --status-critical-bg: rgba(153, 27, 27, 0.5);
+            --status-critical-text: #fca5a5;
+        }
+
+        html.light { /* Light Theme Overrides */
+            --bg-primary: #f3f4f6;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f9fafb;
+            --border-color: #e5e7eb;
+            --text-primary: #111827;
+            --text-secondary: #374151;
+            --text-tertiary: #6b7280;
+            --accent-color: #2563eb;
+            --green-text: #166534;
+            --red-text: #b91c1c;
+            --status-ok-bg: #d1fae5;
+            --status-ok-text: #057a55;
+            --status-alert-bg: #fef3c7;
+            --status-alert-text: #b45309;
+            --status-critical-bg: #fee2e2;
+            --status-critical-text: #b91c1c;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-tertiary);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+        .item-card, .section-card, .modal-card {
+            transition: all 0.2s ease-in-out;
+        }
+        .item-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent-color);
+        }
+        .btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .btn:hover {
+            transform: scale(1.05);
+            filter: brightness(1.1);
+        }
+        .modal { display: none; }
+        .modal.is-open { display: flex; }
+        .form-input, .form-select {
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+        .form-input::placeholder { color: var(--text-tertiary); }
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-color) 30%, transparent);
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="absolute top-4 right-4 z-10">
+        <button id="theme-toggle" class="p-2 rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)]">
+            <svg id="theme-icon-sun" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 18v-1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707" />
+            </svg>
+            <svg id="theme-icon-moon" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+        </button>
+    </div>
+
+    <div id="app" class="container mx-auto p-4 sm:p-6 lg:p-8">
+
+        <!-- Cabeçalho -->
+        <header class="mb-8 text-center">
+            <h1 class="text-4xl font-bold text-[var(--text-primary)]">Controle de Estoque - Tuesday</h1>
+            <p class="text-lg text-[var(--text-secondary)] mt-2">Registro de Entradas / Saídas e Estoque mínimo</p>
+        </header>
+
+        <!-- Botão para Adicionar Item -->
+        <div class="flex justify-center mb-8">
+            <button id="openModalBtn" class="bg-[var(--accent-color)] text-white font-bold py-3 px-6 rounded-lg shadow-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] focus:ring-opacity-50 btn">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Adicionar Novo Item
+            </button>
+        </div>
+        
+        <!-- UID do Usuário -->
+        <div id="user-info" class="text-center mb-8 text-sm text-[var(--text-tertiary)] hidden">
+            Conectado como: <span id="user-id" class="font-mono bg-[var(--bg-secondary)] text-[var(--text-secondary)] px-2 py-1 rounded"></span>
+        </div>
+
+        <!-- Grid de Categorias -->
+        <main class="category-grid">
+            <section id="limpeza-section" class="section-card bg-[var(--bg-secondary)] p-6 rounded-2xl border border-transparent hover:border-teal-400">
+                <h2 class="text-2xl font-bold mb-4 border-b border-[var(--border-color)] pb-2 text-teal-400">🧹 Limpeza</h2>
+                <div id="limpeza-list" class="space-y-3"></div>
+            </section>
+            <section id="escritorio-section" class="section-card bg-[var(--bg-secondary)] p-6 rounded-2xl border border-transparent hover:border-indigo-400">
+                <h2 class="text-2xl font-bold mb-4 border-b border-[var(--border-color)] pb-2 text-indigo-400">✒️ Escritório</h2>
+                <div id="escritorio-list" class="space-y-3"></div>
+            </section>
+            <section id="copa-section" class="section-card bg-[var(--bg-secondary)] p-6 rounded-2xl border border-transparent hover:border-amber-400">
+                <h2 class="text-2xl font-bold mb-4 border-b border-[var(--border-color)] pb-2 text-amber-400">☕ Copa</h2>
+                <div id="copa-list" class="space-y-3"></div>
+            </section>
+        </main>
+
+        <!-- Seção de Log de Movimentações -->
+        <section id="log-section" class="mt-12 bg-[var(--bg-secondary)] p-6 rounded-2xl section-card">
+            <h2 class="text-2xl font-bold mb-4 border-b border-[var(--border-color)] pb-2 text-[var(--text-secondary)]">📜 Log de Movimentações</h2>
+            <div id="log-list" class="space-y-2 max-h-96 overflow-y-auto pr-2"></div>
+        </section>
+    </div>
+
+    <!-- Modal para Adicionar Item -->
+    <div id="addItemModal" class="modal fixed inset-0 bg-black bg-opacity-70 items-center justify-center p-4">
+        <div class="modal-card bg-[var(--bg-secondary)] w-full max-w-md p-8 rounded-2xl shadow-2xl relative border border-[var(--border-color)]">
+            <button id="closeModalBtn" class="absolute top-4 right-4 text-[var(--text-tertiary)] hover:text-[var(--text-primary)]">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+            <h3 class="text-2xl font-bold mb-6 text-center text-[var(--text-primary)]">Adicionar Novo Item</h3>
+            <form id="addItemForm" class="space-y-6">
+                <div>
+                    <label for="itemName" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Nome do Item</label>
+                    <input type="text" id="itemName" name="itemName" required class="form-input w-full px-4 py-2 rounded-lg" placeholder="Ex: Papel A4">
+                </div>
+                <div>
+                    <label for="itemQuantity" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Quantidade Inicial</label>
+                    <input type="number" id="itemQuantity" name="itemQuantity" min="0" required class="form-input w-full px-4 py-2 rounded-lg" placeholder="Ex: 10">
+                </div>
+                <div>
+                    <label for="itemMinStock" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Estoque Mínimo</label>
+                    <input type="number" id="itemMinStock" name="itemMinStock" min="0" required class="form-input w-full px-4 py-2 rounded-lg" placeholder="Ex: 5">
+                </div>
+                <div>
+                    <label for="itemCategory" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Categoria</label>
+                    <select id="itemCategory" name="itemCategory" required class="form-select w-full px-4 py-2 rounded-lg">
+                        <option value="limpeza">Limpeza</option>
+                        <option value="escritorio">Escritório</option>
+                        <option value="copa">Copa</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full bg-[var(--accent-color)] text-white font-bold py-3 px-6 rounded-lg shadow-lg btn">Salvar Item</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal para Editar Item -->
+    <div id="editItemModal" class="modal fixed inset-0 bg-black bg-opacity-70 items-center justify-center p-4">
+        <div class="modal-card bg-[var(--bg-secondary)] w-full max-w-md p-8 rounded-2xl shadow-2xl relative border border-[var(--border-color)]">
+            <button id="closeEditModalBtn" class="absolute top-4 right-4 text-[var(--text-tertiary)] hover:text-[var(--text-primary)]">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+            <h3 class="text-2xl font-bold mb-6 text-center text-[var(--text-primary)]">Editar Item</h3>
+            <form id="editItemForm" class="space-y-6">
+                <input type="hidden" id="editItemId" name="editItemId">
+                <div>
+                    <label for="editItemName" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Nome do Item</label>
+                    <input type="text" id="editItemName" name="editItemName" required class="form-input w-full px-4 py-2 rounded-lg">
+                </div>
+                <div>
+                    <label for="editItemMinStock" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Estoque Mínimo</label>
+                    <input type="number" id="editItemMinStock" name="editItemMinStock" min="0" required class="form-input w-full px-4 py-2 rounded-lg">
+                </div>
+                <button type="submit" class="w-full bg-green-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-green-500 btn">
+                    Atualizar Item
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // --- Theme Switcher Logic ---
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const themeIconSun = document.getElementById('theme-icon-sun');
+        const themeIconMoon = document.getElementById('theme-icon-moon');
+
+        const applyTheme = (theme) => {
+            if (theme === 'light') {
+                document.documentElement.classList.add('light');
+                document.documentElement.classList.remove('dark');
+                themeIconSun.classList.remove('hidden');
+                themeIconMoon.classList.add('hidden');
+            } else {
+                document.documentElement.classList.remove('light');
+                document.documentElement.classList.add('dark');
+                themeIconSun.classList.add('hidden');
+                themeIconMoon.classList.remove('hidden');
+            }
+            localStorage.setItem('theme', theme);
+        };
+
+        themeToggleBtn.addEventListener('click', () => {
+            const currentTheme = localStorage.getItem('theme') || 'dark';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            applyTheme(newTheme);
+        });
+
+        // Apply saved theme on initial load
+        const savedTheme = localStorage.getItem('theme') || 'dark'; // default to dark
+        applyTheme(savedTheme);
+    </script>
+
+    <!-- Firebase -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, addDoc, onSnapshot, updateDoc, deleteDoc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Configuração ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "DEMO_KEY", authDomain: "DEMO.firebaseapp.com", projectId: "DEMO" };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // --- Autenticação ---
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                document.getElementById('user-id').textContent = user.uid;
+                document.getElementById('user-info').classList.remove('hidden');
+                setupRealtimeListener();
+                setupLogsListener();
+            }
+        });
+        (async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
+                else await signInAnonymously(auth);
+            } catch (error) { console.error("Authentication Error:", error); }
+        })();
+        
+        // --- Referências do DOM ---
+        const lists = { limpeza: document.getElementById('limpeza-list'), escritorio: document.getElementById('escritorio-list'), copa: document.getElementById('copa-list') };
+        const logList = document.getElementById('log-list');
+
+        // Modals
+        const addItemModal = document.getElementById('addItemModal');
+        const editItemModal = document.getElementById('editItemModal');
+        const addItemForm = document.getElementById('addItemForm');
+        const editItemForm = document.getElementById('editItemForm');
+
+        // --- Lógica dos Modals ---
+        document.getElementById('openModalBtn').addEventListener('click', () => addItemModal.classList.add('is-open'));
+        document.getElementById('closeModalBtn').addEventListener('click', () => addItemModal.classList.remove('is-open'));
+        document.getElementById('closeEditModalBtn').addEventListener('click', () => editItemModal.classList.remove('is-open'));
+        window.addEventListener('click', e => {
+            if (e.target === addItemModal) addItemModal.classList.remove('is-open');
+            if (e.target === editItemModal) editItemModal.classList.remove('is-open');
+        });
+        
+        function openEditModal(item) {
+            editItemForm.editItemId.value = item.id;
+            editItemForm.editItemName.value = item.name;
+            editItemForm.editItemMinStock.value = item.minStock;
+            editItemModal.classList.add('is-open');
+        }
+
+        // --- Lógica do Firestore ---
+        const inventoryCollectionPath = `/artifacts/${appId}/public/data/inventory`;
+        const logsCollectionPath = `/artifacts/${appId}/public/data/inventory_logs`;
+        const inventoryCol = collection(db, inventoryCollectionPath);
+        const logsCol = collection(db, logsCollectionPath);
+
+        // Adicionar item
+        addItemForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const itemName = addItemForm.itemName.value.trim();
+            const itemQuantity = parseInt(addItemForm.itemQuantity.value, 10);
+            const itemMinStock = parseInt(addItemForm.itemMinStock.value, 10);
+            const itemCategory = addItemForm.itemCategory.value;
+
+            if (itemName && !isNaN(itemQuantity) && itemCategory && !isNaN(itemMinStock)) {
+                try {
+                    await addDoc(inventoryCol, {
+                        name: itemName,
+                        quantity: itemQuantity,
+                        minStock: itemMinStock,
+                        category: itemCategory,
+                        createdAt: serverTimestamp()
+                    });
+                    await addLogEntry(itemName, `+${itemQuantity} (criado)`);
+                    addItemForm.reset();
+                    addItemModal.classList.remove('is-open');
+                } catch (error) {
+                    console.error("Error adding document: ", error);
+                }
+            }
+        });
+
+        // Editar item
+        editItemForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = editItemForm.editItemId.value;
+            const name = editItemForm.editItemName.value.trim();
+            const minStock = parseInt(editItemForm.editItemMinStock.value, 10);
+            if (!id || !name || isNaN(minStock)) return;
+            
+            const itemDoc = doc(db, inventoryCollectionPath, id);
+            try {
+                await updateDoc(itemDoc, { name, minStock });
+                editItemModal.classList.remove('is-open');
+            } catch (error) { console.error("Error updating item details:", error); }
+        });
+
+        async function updateQuantity(id, newQuantity, itemName, change) {
+            if (newQuantity < 0) return;
+            const itemDoc = doc(db, inventoryCollectionPath, id);
+            try {
+                await updateDoc(itemDoc, { quantity: newQuantity });
+                await addLogEntry(itemName, change);
+            } catch (error) { console.error("Error updating quantity:", error); }
+        }
+
+        async function deleteItem(id, itemName) {
+            const itemDoc = doc(db, inventoryCollectionPath, id);
+            try {
+                await deleteDoc(itemDoc);
+                await addLogEntry(itemName, 'Item removido');
+            } catch (error) {
+                console.error("Error deleting document: ", error);
+            }
+        }
+        
+        async function addLogEntry(itemName, change) {
+            try {
+                await addDoc(logsCol, {
+                    itemName,
+                    change,
+                    timestamp: serverTimestamp()
+                });
+            } catch (error) { console.error("Error adding log entry:", error); }
+        }
+
+        // --- Lógica de Status ---
+        function getStatusKey(quantity, minStock) {
+            if (!minStock || minStock <= 0) return 'ok';
+            if (quantity < minStock) return 'critico';
+            if (quantity < minStock * 1.5) return 'alerta';
+            return 'ok';
+        }
+
+        // --- Renderização na UI ---
+        function renderItems(items) {
+            Object.values(lists).forEach(list => list.innerHTML = '');
+            if(items.length === 0) {
+                 ['limpeza', 'escritorio', 'copa'].forEach(cat => {
+                    lists[cat].innerHTML = `<p class="text-[var(--text-tertiary)] text-sm">Nenhum item adicionado ainda.</p>`;
+                 });
+                 return;
+            }
+            items.sort((a, b) => a.name.localeCompare(b.name));
+
+            const statusMap = {
+                ok: { text: 'OK', colorClass: 'bg-[var(--status-ok-bg)] text-[var(--status-ok-text)]' },
+                alerta: { text: 'Alerta', colorClass: 'bg-[var(--status-alert-bg)] text-[var(--status-alert-text)]' },
+                critico: { text: 'Crítico', colorClass: 'bg-[var(--status-critical-bg)] text-[var(--status-critical-text)]' }
+            };
+
+            items.forEach(item => {
+                const list = lists[item.category];
+                if (!list) return;
+                const statusKey = getStatusKey(item.quantity, item.minStock || 0);
+                const status = statusMap[statusKey];
+                const card = document.createElement('div');
+                card.className = 'item-card flex items-center justify-between bg-[var(--bg-primary)] p-3 rounded-lg border border-[var(--border-color)]';
+                card.dataset.item = JSON.stringify(item);
+                card.innerHTML = `
+                    <div class="flex-grow flex items-center gap-3">
+                        <p class="font-semibold text-[var(--text-primary)]">${item.name}</p>
+                        <span class="text-xs font-medium px-2.5 py-0.5 rounded-full ${status.colorClass}">${status.text}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button data-action="decrease" class="btn-quantity bg-[var(--bg-tertiary)] text-[var(--text-secondary)] h-8 w-8 rounded-full font-bold text-lg flex items-center justify-center hover:bg-[var(--border-color)]">-</button>
+                        <span class="font-bold text-lg w-10 text-center text-[var(--text-primary)]">${item.quantity}</span>
+                        <button data-action="increase" class="btn-quantity bg-[var(--bg-tertiary)] text-[var(--text-secondary)] h-8 w-8 rounded-full font-bold text-lg flex items-center justify-center hover:bg-[var(--border-color)]">+</button>
+                        <button data-action="edit" class="text-blue-400 hover:text-blue-300 ml-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                        </button>
+                        <button data-action="delete" class="btn-delete text-red-400 hover:text-red-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                    </div>`;
+                list.appendChild(card);
+            });
+        }
+        
+        function renderLogs(logs) {
+            logList.innerHTML = '';
+            if (logs.length === 0) {
+                logList.innerHTML = `<p class="text-[var(--text-tertiary)] text-sm">Nenhuma movimentação registrada.</p>`;
+                return;
+            }
+
+            const groupedLogs = {};
+            logs.forEach(log => {
+                if (!log.timestamp) return;
+                const date = log.timestamp.toDate().toLocaleDateString('pt-BR');
+                const itemName = log.itemName;
+                if (!groupedLogs[date]) groupedLogs[date] = {};
+                if (!groupedLogs[date][itemName]) groupedLogs[date][itemName] = { entradas: 0, saidas: 0, removido: false };
+                if (log.change === 'Item removido') {
+                    groupedLogs[date][itemName].removido = true;
+                    return;
+                }
+                const changeValue = parseInt(log.change.match(/-?\d+/)?.[0] || '0', 10);
+                if (changeValue > 0) groupedLogs[date][itemName].entradas += changeValue;
+                else if (changeValue < 0) groupedLogs[date][itemName].saidas += Math.abs(changeValue);
+            });
+
+            const sortedDates = Object.keys(groupedLogs).sort((a, b) => new Date(b.split('/').reverse().join('-')) - new Date(a.split('/').reverse().join('-')));
+            if (sortedDates.length === 0) {
+                 logList.innerHTML = `<p class="text-[var(--text-tertiary)] text-sm">Nenhuma movimentação registrada.</p>`;
+                 return;
+            }
+
+            sortedDates.forEach(date => {
+                const dateHeader = document.createElement('h4');
+                dateHeader.className = 'text-md font-semibold text-[var(--text-secondary)] mt-4 mb-2 sticky top-0 bg-[var(--bg-secondary)] py-1 border-b border-[var(--border-color)]';
+                dateHeader.textContent = date;
+                logList.appendChild(dateHeader);
+
+                const items = groupedLogs[date];
+                const sortedItems = Object.keys(items).sort();
+
+                sortedItems.forEach(itemName => {
+                    const movements = items[itemName];
+                    if (movements.entradas > 0) {
+                        const logEl = document.createElement('div');
+                        logEl.className = 'flex justify-between items-center text-sm p-2 bg-[var(--bg-tertiary)] rounded';
+                        logEl.innerHTML = `
+                            <span class="text-[var(--text-primary)]"><strong>${itemName}</strong></span>
+                            <span class="font-bold text-[var(--green-text)]">+${movements.entradas}</span>
+                            <span class="text-[var(--text-tertiary)] w-20 text-right">Entradas</span>`;
+                        logList.appendChild(logEl);
+                    }
+                    if (movements.saidas > 0) {
+                        const logEl = document.createElement('div');
+                        logEl.className = 'flex justify-between items-center text-sm p-2 bg-[var(--bg-tertiary)] rounded';
+                        logEl.innerHTML = `
+                            <span class="text-[var(--text-primary)]"><strong>${itemName}</strong></span>
+                            <span class="font-bold text-[var(--red-text)]">-${movements.saidas}</span>
+                            <span class="text-[var(--text-tertiary)] w-20 text-right">Saídas</span>`;
+                        logList.appendChild(logEl);
+                    }
+                    if (movements.removido) {
+                        const logEl = document.createElement('div');
+                        logEl.className = 'flex justify-between items-center text-sm p-2 bg-[var(--bg-tertiary)] rounded';
+                        logEl.innerHTML = `
+                            <span class="text-[var(--text-primary)]"><strong>${itemName}</strong></span>
+                            <span class="font-bold text-[var(--text-tertiary)]">Removido</span>
+                            <span class="text-[var(--text-tertiary)] w-20 text-right"></span>`;
+                        logList.appendChild(logEl);
+                    }
+                });
+            });
+        }
+        
+        // --- Delegação de Eventos ---
+        document.getElementById('app').addEventListener('click', (e) => {
+            const button = e.target.closest('button');
+            if (!button) return;
+            const card = button.closest('.item-card');
+            const item = card ? JSON.parse(card.dataset.item) : null;
+            const action = button.dataset.action;
+            if (!item && action !== 'openModalBtn' && !document.getElementById('addItemModal').contains(button)) return;
+
+            switch(action) {
+                case 'increase': updateQuantity(item.id, item.quantity + 1, item.name, '+1'); break;
+                case 'decrease': updateQuantity(item.id, item.quantity - 1, item.name, '-1'); break;
+                case 'edit': openEditModal(item); break;
+                case 'delete': deleteItem(item.id, item.name); break;
+            }
+        });
+
+        // --- Listeners em Tempo Real ---
+        function setupRealtimeListener() {
+            onSnapshot(query(inventoryCol), (snapshot) => {
+                const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderItems(items);
+            });
+        }
+        function setupLogsListener() {
+            onSnapshot(query(logsCol, orderBy('timestamp', 'desc')), (snapshot) => {
+                const logs = snapshot.docs.map(doc => doc.data());
+                renderLogs(logs);
+            });
+        }
+    </script>
+</body>
+</html>
+
