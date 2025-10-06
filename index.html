@@ -121,11 +121,6 @@
                 Adicionar Novo Item
             </button>
         </div>
-        
-        <!-- UID do Usuário -->
-        <div id="user-info" class="text-center mb-8 text-sm text-[var(--text-tertiary)] hidden">
-            Conectado como: <span id="user-id" class="font-mono bg-[var(--bg-secondary)] text-[var(--text-secondary)] px-2 py-1 rounded"></span>
-        </div>
 
         <!-- Grid de Categorias -->
         <main class="category-grid">
@@ -252,14 +247,14 @@
         // --- Configuração ---
         const appId = "controle-estoque---tuesday";
         const firebaseConfig = {
-  apiKey: "AIzaSyDNI0y_gO15UpbHXAn48l_ITnJt1i5xoyc",
-  authDomain: "controle-estoque---tuesday.firebaseapp.com",
-  projectId: "controle-estoque---tuesday",
-  storageBucket: "controle-estoque---tuesday.firebasestorage.app",
-  messagingSenderId: "57967857765",
-  appId: "1:57967857765:web:c6b8c3a46289903786b68c",
-  measurementId: "G-CS11VN4S04"
-};
+			apiKey: "AIzaSyDNI0y_gO15UpbHXAn48l_ITnJt1i5xoyc",
+			authDomain: "controle-estoque---tuesday.firebaseapp.com",
+			projectId: "controle-estoque---tuesday",
+			storageBucket: "controle-estoque---tuesday.firebasestorage.app",
+			messagingSenderId: "57967857765",
+			appId: "1:57967857765:web:c6b8c3a46289903786b68c",
+			measurementId: "G-CS11VN4S04"
+		};
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -268,8 +263,6 @@
         // --- Autenticação ---
         onAuthStateChanged(auth, user => {
             if (user) {
-                document.getElementById('user-id').textContent = user.uid;
-                document.getElementById('user-info').classList.remove('hidden');
                 setupRealtimeListener();
                 setupLogsListener();
             }
@@ -504,29 +497,29 @@
                     const movements = items[itemName];
                     if (movements.entradas > 0) {
                         const logEl = document.createElement('div');
-                        logEl.className = 'flex justify-between items-center text-sm p-2 bg-[var(--bg-tertiary)] rounded';
+                        logEl.className = 'flex items-center text-sm p-2 bg-[var(--bg-tertiary)] rounded';
                         logEl.innerHTML = `
-                            <span class="text-[var(--text-primary)]"><strong>${itemName}</strong></span>
-                            <span class="font-bold text-[var(--green-text)]">+${movements.entradas}</span>
-                            <span class="text-[var(--text-tertiary)] w-20 text-right">Entradas</span>`;
+                            <span class="flex-1 text-left text-[var(--text-primary)]"><strong>${itemName}</strong></span>
+                            <span class="flex-1 text-center font-bold text-[var(--green-text)]">+${movements.entradas}</span>
+                            <span class="flex-1 text-right text-[var(--text-tertiary)]">Entradas</span>`;
                         logList.appendChild(logEl);
                     }
                     if (movements.saidas > 0) {
                         const logEl = document.createElement('div');
-                        logEl.className = 'flex justify-between items-center text-sm p-2 bg-[var(--bg-tertiary)] rounded';
+                        logEl.className = 'flex items-center text-sm p-2 bg-[var(--bg-tertiary)] rounded';
                         logEl.innerHTML = `
-                            <span class="text-[var(--text-primary)]"><strong>${itemName}</strong></span>
-                            <span class="font-bold text-[var(--red-text)]">-${movements.saidas}</span>
-                            <span class="text-[var(--text-tertiary)] w-20 text-right">Saídas</span>`;
+                            <span class="flex-1 text-left text-[var(--text-primary)]"><strong>${itemName}</strong></span>
+                            <span class="flex-1 text-center font-bold text-[var(--red-text)]">-${movements.saidas}</span>
+                            <span class="flex-1 text-right text-[var(--text-tertiary)]">Saídas</span>`;
                         logList.appendChild(logEl);
                     }
                     if (movements.removido) {
                         const logEl = document.createElement('div');
-                        logEl.className = 'flex justify-between items-center text-sm p-2 bg-[var(--bg-tertiary)] rounded';
+                        logEl.className = 'flex items-center text-sm p-2 bg-[var(--bg-tertiary)] rounded';
                         logEl.innerHTML = `
-                            <span class="text-[var(--text-primary)]"><strong>${itemName}</strong></span>
-                            <span class="font-bold text-[var(--text-tertiary)]">Removido</span>
-                            <span class="text-[var(--text-tertiary)] w-20 text-right"></span>`;
+                            <span class="flex-1 text-left text-[var(--text-primary)]"><strong>${itemName}</strong></span>
+                            <span class="flex-1 text-center font-bold text-[var(--text-tertiary)]">Removido</span>
+                            <span class="flex-1 text-right text-[var(--text-tertiary)]"></span>`;
                         logList.appendChild(logEl);
                     }
                 });
