@@ -251,7 +251,16 @@
 
         // --- Configuração ---
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "DEMO_KEY", authDomain: "DEMO.firebaseapp.com", projectId: "DEMO" };
+        const firebaseConfig = {
+  apiKey: "AIzaSyDNI0y_gO15UpbHXAn48l_ITnJt1i5xoyc",
+  authDomain: "controle-estoque---tuesday.firebaseapp.com",
+  projectId: "controle-estoque---tuesday",
+  storageBucket: "controle-estoque---tuesday.firebasestorage.app",
+  messagingSenderId: "57967857765",
+  appId: "1:57967857765:web:c6b8c3a46289903786b68c",
+  measurementId: "G-CS11VN4S04"
+};
+
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
