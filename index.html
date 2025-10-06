@@ -139,7 +139,12 @@
 
         <!-- Seção de Log de Movimentações -->
         <section id="log-section" class="mt-12 bg-[var(--bg-secondary)] p-6 rounded-2xl section-card">
-            <h2 class="text-2xl font-bold mb-4 border-b border-[var(--border-color)] pb-2 text-[var(--text-secondary)]">📜 Log de Movimentações</h2>
+            <div class="flex justify-between items-center mb-4 border-b border-[var(--border-color)] pb-2">
+                 <h2 class="text-2xl font-bold text-[var(--text-secondary)]">📜 Log de Movimentações</h2>
+                 <button id="exportCsvBtn" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 btn text-sm">
+                    Exportar para CSV
+                </button>
+            </div>
             <div id="log-list" class="space-y-2 max-h-96 overflow-y-auto pr-2"></div>
         </section>
     </div>
@@ -237,7 +242,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, addDoc, onSnapshot, updateDoc, deleteDoc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, addDoc, onSnapshot, updateDoc, deleteDoc, serverTimestamp, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Configuração ---
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
@@ -518,6 +523,63 @@
                 renderLogs(logs);
             });
         }
+
+        // --- Exportar para CSV ---
+        async function exportLogsToCsv() {
+            const logsQuery = query(logsCol, orderBy('timestamp', 'desc'));
+            const snapshot = await getDocs(logsQuery);
+            const logs = snapshot.docs.map(doc => doc.data());
+
+            if (logs.length === 0) {
+                alert("Não há movimentações para exportar.");
+                return;
+            }
+            
+            const groupedLogs = {};
+            logs.forEach(log => {
+                if (!log.timestamp) return;
+                const date = log.timestamp.toDate().toLocaleDateString('pt-BR');
+                const itemName = log.itemName;
+                if (!groupedLogs[date]) groupedLogs[date] = {};
+                if (!groupedLogs[date][itemName]) groupedLogs[date][itemName] = { entradas: 0, saidas: 0, removido: false };
+                if (log.change === 'Item removido') {
+                    groupedLogs[date][itemName].removido = true;
+                    return;
+                }
+                const changeValue = parseInt(log.change.match(/-?\d+/)?.[0] || '0', 10);
+                if (changeValue > 0) groupedLogs[date][itemName].entradas += changeValue;
+                else if (changeValue < 0) groupedLogs[date][itemName].saidas += Math.abs(changeValue);
+            });
+
+            let csvContent = "Data,Item,Entradas,Saidas,Status\n";
+            const sortedDates = Object.keys(groupedLogs).sort((a, b) => new Date(b.split('/').reverse().join('-')) - new Date(a.split('/').reverse().join('-')));
+            
+            sortedDates.forEach(date => {
+                const items = groupedLogs[date];
+                const sortedItems = Object.keys(items).sort();
+                sortedItems.forEach(itemName => {
+                    const movements = items[itemName];
+                    let status = movements.removido ? 'Removido' : '';
+                    let row = [date, `"${itemName.replace(/"/g, '""')}"`, movements.entradas, movements.saidas, status].join(',');
+                    csvContent += row + "\r\n";
+                });
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                const today = new Date().toISOString().slice(0, 10);
+                link.setAttribute("href", url);
+                link.setAttribute("download", `log_movimentacoes_${today}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+        document.getElementById('exportCsvBtn').addEventListener('click', exportLogsToCsv);
+
     </script>
 </body>
 </html>
