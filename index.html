@@ -136,6 +136,10 @@
                 <h2 class="text-2xl font-bold mb-4 border-b border-[var(--border-color)] pb-2 text-amber-400">☕ Copa</h2>
                 <div id="copa-list" class="space-y-3"></div>
             </section>
+            <section id="utensilios-section" class="section-card bg-[var(--bg-secondary)] p-6 rounded-2xl border border-transparent hover:border-purple-400">
+                <h2 class="text-2xl font-bold mb-4 border-b border-[var(--border-color)] pb-2 text-purple-400">🍴 Utensílios</h2>
+                <div id="utensilios-list" class="space-y-3"></div>
+            </section>
         </main>
 
         <!-- Seção de Log de Movimentações -->
@@ -147,6 +151,14 @@
                 </button>
             </div>
             <div id="log-list" class="space-y-2 max-h-96 overflow-y-auto pr-2"></div>
+        </section>
+        
+        <!-- Seção de Médias Mensais -->
+        <section id="monthly-average-section" class="mt-12 bg-[var(--bg-secondary)] p-6 rounded-2xl section-card">
+            <div class="flex justify-between items-center mb-4 border-b border-[var(--border-color)] pb-2">
+                 <h2 class="text-2xl font-bold text-[var(--text-secondary)]">📊 Média de Saídas Mensais</h2>
+            </div>
+            <div id="monthly-average-list" class="space-y-2"></div>
         </section>
     </div>
 
@@ -176,6 +188,7 @@
                         <option value="limpeza">Limpeza</option>
                         <option value="escritorio">Escritório</option>
                         <option value="copa">Copa</option>
+                        <option value="utensilios">Utensílios</option>
                     </select>
                 </div>
                 <button id="saveItemBtn" type="submit" class="w-full bg-[var(--accent-color)] text-white font-bold py-3 px-6 rounded-lg shadow-lg btn">Salvar Item</button>
@@ -275,8 +288,14 @@
         })();
         
         // --- Referências do DOM ---
-        const lists = { limpeza: document.getElementById('limpeza-list'), escritorio: document.getElementById('escritorio-list'), copa: document.getElementById('copa-list') };
+        const lists = { 
+            limpeza: document.getElementById('limpeza-list'), 
+            escritorio: document.getElementById('escritorio-list'), 
+            copa: document.getElementById('copa-list'),
+            utensilios: document.getElementById('utensilios-list')
+        };
         const logList = document.getElementById('log-list');
+        const monthlyAverageList = document.getElementById('monthly-average-list');
 
         const addItemModal = document.getElementById('addItemModal');
         const editItemModal = document.getElementById('editItemModal');
@@ -313,15 +332,12 @@
         addItemForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             if (saveItemBtn.disabled) return;
-
             saveItemBtn.disabled = true;
             saveItemBtn.textContent = 'Salvando...';
-
             const itemName = addItemForm.itemName.value.trim();
             const itemQuantity = parseInt(addItemForm.itemQuantity.value, 10);
             const itemMinStock = parseInt(addItemForm.itemMinStock.value, 10);
             const itemCategory = addItemForm.itemCategory.value;
-
             if (itemName && !isNaN(itemQuantity) && itemCategory && !isNaN(itemMinStock)) {
                 try {
                     await addDoc(inventoryCol, { name: itemName, quantity: itemQuantity, minStock: itemMinStock, category: itemCategory, createdAt: serverTimestamp() });
@@ -337,7 +353,6 @@
                  addItemModalTitle.textContent = 'Preencha todos os campos!';
                  addItemModalTitle.style.color = 'var(--danger-color)';
             }
-
             setTimeout(() => {
                 saveItemBtn.disabled = false;
                 saveItemBtn.textContent = 'Salvar Item';
@@ -350,14 +365,11 @@
         editItemForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             if (updateItemBtn.disabled) return;
-
             updateItemBtn.disabled = true;
             updateItemBtn.textContent = 'Atualizando...';
-
             const id = editItemForm.editItemId.value;
             const name = editItemForm.editItemName.value.trim();
             const minStock = parseInt(editItemForm.editItemMinStock.value, 10);
-            
             if (id && name && !isNaN(minStock)) {
                 const itemDoc = doc(db, inventoryCollectionPath, id);
                 try {
@@ -372,7 +384,6 @@
                 editItemModalTitle.textContent = 'Preencha todos os campos!';
                 editItemModalTitle.style.color = 'var(--danger-color)';
             }
-            
             setTimeout(() => {
                 updateItemBtn.disabled = false;
                 updateItemBtn.textContent = 'Atualizar Item';
@@ -412,7 +423,7 @@
         function renderItems(items) {
             Object.values(lists).forEach(list => list.innerHTML = '');
             if(items.length === 0) {
-                 ['limpeza', 'escritorio', 'copa'].forEach(cat => {
+                 ['limpeza', 'escritorio', 'copa', 'utensilios'].forEach(cat => {
                     lists[cat].innerHTML = `<p class="text-[var(--text-tertiary)] text-sm">Nenhum item adicionado ainda.</p>`;
                  });
                  return;
@@ -428,6 +439,15 @@
             items.forEach(item => {
                 const list = lists[item.category];
                 if (!list) return;
+
+                // Preenche categorias vazias com uma mensagem
+                const populatedCategories = new Set(items.map(i => i.category));
+                Object.keys(lists).forEach(cat => {
+                    if (!populatedCategories.has(cat)) {
+                        lists[cat].innerHTML = `<p class="text-[var(--text-tertiary)] text-sm">Nenhum item nesta categoria.</p>`;
+                    }
+                });
+
                 const statusKey = getStatusKey(item.quantity, item.minStock || 0);
                 const status = statusMap[statusKey];
                 const card = document.createElement('div');
@@ -525,6 +545,54 @@
                 });
             });
         }
+
+        function renderMonthlyAverages(logs) {
+            monthlyAverageList.innerHTML = '';
+            const itemData = {};
+
+            const outputLogs = logs.filter(log => log.change && log.change.startsWith('-'));
+
+            if (outputLogs.length === 0) {
+                monthlyAverageList.innerHTML = `<p class="text-[var(--text-tertiary)] text-sm">Nenhuma saída registrada para calcular médias.</p>`;
+                return;
+            }
+
+            outputLogs.forEach(log => {
+                if (!log.timestamp) return;
+                const itemName = log.itemName;
+                const date = log.timestamp.toDate();
+                const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                const quantity = Math.abs(parseInt(log.change, 10));
+
+                if (!itemData[itemName]) {
+                    itemData[itemName] = {
+                        totalSaidas: 0,
+                        months: new Set()
+                    };
+                }
+                itemData[itemName].totalSaidas += quantity;
+                itemData[itemName].months.add(monthYear);
+            });
+
+            const averages = Object.keys(itemData).map(itemName => {
+                const data = itemData[itemName];
+                const average = data.totalSaidas / data.months.size;
+                return {
+                    name: itemName,
+                    average: average.toFixed(1)
+                };
+            }).sort((a, b) => a.name.localeCompare(b.name));
+
+            averages.forEach(item => {
+                const avgEl = document.createElement('div');
+                avgEl.className = 'flex justify-between items-center text-sm p-2 bg-[var(--bg-tertiary)] rounded';
+                avgEl.innerHTML = `
+                    <span class="text-[var(--text-primary)]"><strong>${item.name}</strong></span>
+                    <span class="font-bold text-[var(--text-secondary)]">${item.average} / mês</span>
+                `;
+                monthlyAverageList.appendChild(avgEl);
+            });
+        }
         
         document.getElementById('app').addEventListener('click', (e) => {
             const button = e.target.closest('button');
@@ -552,6 +620,7 @@
             onSnapshot(query(logsCol, orderBy('timestamp', 'desc')), (snapshot) => {
                 const logs = snapshot.docs.map(doc => doc.data());
                 renderLogs(logs);
+                renderMonthlyAverages(logs);
             });
         }
 
